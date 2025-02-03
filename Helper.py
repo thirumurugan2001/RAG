@@ -1,28 +1,22 @@
 from ast import arg
 import os
-from openai import OpenAI
 import singlestoredb as s2
 from dotenv import load_dotenv
 import pandas as pd
-import numpy as np
+import cohere
 load_dotenv()
 
 # Function to get the embedding of the text
 def get_embedding(text):
     try:
-        token = token = os.getenv("KEY")
-        endpoint = "https://models.inference.ai.azure.com"
-        model_name = "text-embedding-3-large"
-
-        client = OpenAI(
-            base_url=endpoint,
-            api_key=token,
-        )
-        response = client.embeddings.create(
-            input=[text],
-            model=model_name,
-        )
-        return response.data[0].embedding
+        token = os.getenv("API_KEY")
+        co = cohere.Client(token)  
+        embedding = co.embed(
+            model='embed-english-v3.0', 
+            input_type='classification', 
+            texts=[text]
+            ).embeddings[0] 
+        return embedding
     except Exception as e:
         print("Error in getting embedding: ", str(e))
         return None
@@ -79,6 +73,7 @@ def dropTable():
         print("Error in selecting data: ", str(e))
         return None
 
+# Function to read the excel file
 def read_excel_file():
     try:
         file_path=r'Famous_Places_India.xlsx'
@@ -89,6 +84,7 @@ def read_excel_file():
         print(f"Error reading the Excel file: {e}")
         return None
 
+# Function to insert data into the database
 def insert_into_database():
     try:
         conn = dbconnection()
@@ -100,18 +96,7 @@ def insert_into_database():
             vector = get_embedding(description)
             query = """insert into famousPlacesIndia (place, description, vector) values ("{0}", "{1}", JSON_ARRAY_PACK("{2}"))""".format(place, description, vector)
             cursor.execute(query)
-            return "Data inserted successfully"
-        conn.commit()
+        return "Data inserted successfully"
     except Exception as e:
         print("Error in inserting data:", str(e))
         return None
-
-# select_query= **"select name, dot product(vector, JSON_ARRAY PACK("{0}")) as score from explore_it order by score desc limit 1***.format(embedding) 
-# print("Query: "+select_query) 
-# cur.execute(select_query) 
-# rows = cur.fetchall() 
-# for row in rows: 
-# print(row)
-
-print(insert_into_database())
-
